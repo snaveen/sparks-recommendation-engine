@@ -4,9 +4,12 @@ import static spark.Spark.*;
 import java.awt.image.DataBuffer;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -18,6 +21,7 @@ import com.mongodb.MongoClient;
 
 import spark.Request;
 public class DealsServer {
+	static List<String> reqFields=Arrays.asList("coupon_title","coupon_link","store","crawl_time");
 
 	
 	
@@ -52,8 +56,9 @@ public class DealsServer {
 		
 		while (cursor2.hasNext()) {
 			DBObject obj = cursor2.next();
-			category = obj.get("category").toString();
-			latLong = obj.get("location").toString();
+			Map data = (Map)obj.get("message");
+			category = data.get("category").toString();
+			latLong = data.get("location").toString();
 		}
 	 
 		List coupons = fetchDealsFromExternalSite(category, latLong);					
@@ -62,11 +67,37 @@ public class DealsServer {
 	
 	private static List fetchDealsFromExternalSite(String category,
 			String latLong) {
-		// TODO Auto-generated method stub
+		String resultJsonStr=null;
+		Map result=null;
+		try{
+			resultJsonStr=HttpClientUtils.getCoupons(category);
+			JsonTransformer transformer=new JsonTransformer();
+			result=transformer.parse(resultJsonStr);
+		}catch(Exception ex){
+			System.out.println("Oops Check it");
+		}
 		
-		List result = new ArrayList();
-		return result;
 		
+		List couponList=extractData((ArrayList<String>)result.get("data"));
+//		System.out.println(couponList);
+		return couponList;
+		
+	}
+
+	private static List extractData(List inputCoupons) {
+		List outputCoupons=new ArrayList();
+		for (Object object : inputCoupons) {
+			Map<String,Object> map=(Map<String,Object>)object;
+			Map<String,Object> outputMap=new HashMap<String,Object>();
+			for (Map.Entry<String, Object> entry : map.entrySet())
+			{
+			    if(reqFields.contains(entry.getKey())){
+			      	outputMap.put(entry.getKey(), entry.getValue());
+			    }
+			}
+			outputCoupons.add(outputMap);
+		}
+		return outputCoupons;
 	}
 
 	public static String parseMessages(Request req){
@@ -102,9 +133,11 @@ public class DealsServer {
 		
 		Map categoryData = new HashMap();
 		
-		categoryData.put("category", "Food");
-		categoryData.put("deviceId", "1234");
-		categoryData.put("location", "123, 123");
+		String categoryInfo = getCategory(data.get("deviceId").toString());
+		
+		categoryData.put("category", categoryInfo);
+		categoryData.put("deviceId", data.get("deviceId"));
+		categoryData.put("location", data.get("location"));
 		
 		categoryDoc.put("message", categoryData);
 		
@@ -115,6 +148,11 @@ public class DealsServer {
 		return "success";
 	}
 	
+	private static String getCategory(String deviceId) {
+		// TODO Auto-generated method stub
+		return "flipkart";		
+	}
+
 	public static String convertDealsToMessages(String json){
 		return "";
 	}

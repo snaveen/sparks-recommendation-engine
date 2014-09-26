@@ -13,7 +13,7 @@ import com.google.gson.Gson;
        return gson.toJson(model);
     }
     
-    public Object parse(String str){
+    public Map parse(String str){
     	Map data = gson.fromJson(str, Map.class);
     	return data;
     }
