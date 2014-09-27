@@ -2,11 +2,15 @@
 import static spark.Spark.*;
 
 import java.awt.image.DataBuffer;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,11 +26,17 @@ import com.mongodb.MongoClient;
 import spark.Request;
 public class DealsServer {
 	static List<String> reqFields=Arrays.asList("coupon_title","coupon_link","store","crawl_time");
-
+	static List<String> stores = new ArrayList<>();
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		   
+		BufferedReader br = new BufferedReader(new FileReader("/home/prasanna/workspace/ml-tools/SparksDeal/src/main/resources/Storelist.txt"));
+		String str = "";
+		while ((str = br.readLine())!= null){
+			stores.add(str);
+		}
+		
 	      get("/fetchDeals", (req, res) -> sendDeals(req.queryParams("deviceId")));
 	      
 	      post("/saveMessage", (req, res) -> parseMessages(req));
@@ -133,11 +143,12 @@ public class DealsServer {
 		
 		Map categoryData = new HashMap();
 		
-		String categoryInfo = getCategory(data.get("deviceId").toString());
+		String categoryInfo = getCategory((List)data.get("messageList"));
 		
 		categoryData.put("category", categoryInfo);
 		categoryData.put("deviceId", data.get("deviceId"));
 		categoryData.put("location", data.get("location"));
+		
 		
 		categoryDoc.put("message", categoryData);
 		
@@ -148,8 +159,24 @@ public class DealsServer {
 		return "success";
 	}
 	
-	private static String getCategory(String deviceId) {
+	private static String getCategory(List messageList) {
 		// TODO Auto-generated method stub
+		
+		Map message = null;
+		if (messageList != null && messageList.size() > 0){
+			message = (Map)messageList.get(0);
+		}
+		
+		if (message != null){
+		String content = message.get("content").toString();
+		Iterator<String> iterator = stores.iterator();
+		while (iterator.hasNext()){
+			String store = iterator.next();
+			if (content.toLowerCase().contains(store.toLowerCase())){
+				return store;
+			}
+		}
+		}
 		return "flipkart";		
 	}
 
